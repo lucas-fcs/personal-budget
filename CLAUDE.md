@@ -23,7 +23,7 @@ Este é um projeto de portfólio/estudo. O dono quer **entender** cada decisão,
 
 ## Comandos
 - `npm install` — dependências
-- `node --watch server.js` — servidor em desenvolvimento (porta 3000)
+- `npm run dev` — servidor em desenvolvimento (porta 3000), com `--watch` e lendo o `.env` nativamente (sem `dotenv`)
 - `psql -U postgres -d personal_budget -f db/schema.sql` — cria/recria as tabelas (criado na etapa 5 do roadmap)
 
 ## Ambiente

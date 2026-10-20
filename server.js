@@ -1,4 +1,5 @@
 const express = require('express');
+const db = require('./db');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -15,10 +16,13 @@ let nextId = 1;
 const findEnvelopeIndex = (id) => envelopes.findIndex(e => e.id === Number(id));
 
 // Rota de Health Check e Resumo Orçamentário
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  // Prova de conexão com o banco (passo 4b); o resumo abaixo ainda vem da memória até a etapa 6.
+  const { rows } = await db.query('SELECT NOW() AS now');
   const allocatedBudget = envelopes.reduce((acc, env) => acc + env.budget, 0);
   res.status(200).json({
     message: 'API Personal Budget ativa.',
+    databaseTime: rows[0].now,
     totalBudget,
     allocatedBudget,
     remainingBudget: totalBudget - allocatedBudget,
