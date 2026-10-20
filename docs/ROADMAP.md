@@ -36,10 +36,10 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] 4b. `db/index.js` exportando `query` e `withTransaction` (e `pool.on('error')`, checagem da `DATABASE_URL` no boot)
 - [x] 4c. Reorganizar: `app.js` (Express) + `server.js` (listen) + `routes/` + `middleware/errors.js` (refatoração pura, rotas ainda em memória)
 
-## 5. Criar a tabela de envelopes
-- [ ] `db/schema.sql` com `CREATE TABLE IF NOT EXISTS envelopes (...)`
-- [ ] Rodar com `psql -U postgres -d personal_budget -f db/schema.sql`
-- [ ] Conferir no psql: `\dt` e `\d envelopes`
+## 5. Criar a tabela de envelopes ✅
+- [x] `db/schema.sql` com `CREATE TABLE IF NOT EXISTS envelopes (...)`, constraints com nome e índice único em `LOWER(title)`
+- [x] Rodar como `budget_app` (dono do banco): `psql -U budget_app -h localhost -d personal_budget -v ON_ERROR_STOP=1 --single-transaction -f db/schema.sql`
+- [x] Conferir no psql: `\dt` e `\d envelopes` (dono `budget_app`, 5 CHECKs, índice único)
 
 ## 6. Atualizar as requisições de envelopes
 - [ ] GET/POST/PUT/DELETE `/envelopes` com `pool.query('SQL ... $1', [valor])`
@@ -47,8 +47,9 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [ ] Remover o `extract` do PUT (gasto vira transação na etapa 8)
 - [ ] Remover `totalBudget` e a validação de orçamento global; `GET /` passa a mostrar só os totais alocado e disponível
 - [ ] PUT do `budget` ajusta o `balance` pela diferença; transferência move `budget` e `balance`
+- [ ] Recusar valores com mais de 2 casas decimais (o `NUMERIC(12,2)` arredondaria em silêncio: 10.005 → 10.01)
 - [ ] `budget >= 0` tanto no POST quanto no PUT; mapear snake_case (banco) ↔ camelCase (JSON) numa função central
-- [ ] Tratar erros do Postgres (ex.: `23505` = título duplicado → 409; `23514` = violou CHECK → 400; `23503` = envelope com transações → 409)
+- [ ] Tratar erros do Postgres (ex.: `23505` = título duplicado → 409; `23514` = violou CHECK → 400, com mensagem por `err.constraint` (ex.: `envelopes_balance_non_negative` = saldo insuficiente); `23503` = envelope com transações → 409)
 
 ## 7. Testar os endpoints (Postman)
 - [ ] Retestar todas as rotas; conferir no psql que os dados persistem após reiniciar o servidor

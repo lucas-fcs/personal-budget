@@ -24,7 +24,7 @@ Este é um projeto de portfólio/estudo. O dono quer **entender** cada decisão,
 ## Comandos
 - `npm install` — dependências
 - `npm run dev` — servidor em desenvolvimento (porta 3000), com `--watch` e lendo o `.env` nativamente (sem `dotenv`)
-- `psql -U postgres -d personal_budget -f db/schema.sql` — cria/recria as tabelas (criado na etapa 5 do roadmap)
+- `psql -U budget_app -h localhost -d personal_budget -v ON_ERROR_STOP=1 --single-transaction -f db/schema.sql` — cria as tabelas (idempotente, `IF NOT EXISTS`). Rodar como `budget_app`, nunca como `postgres`: quem cria a tabela vira dono dela
 
 ## Ambiente
 - Windows; projeto dentro de uma pasta do OneDrive.
