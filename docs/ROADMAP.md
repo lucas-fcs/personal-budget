@@ -30,10 +30,11 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] `psql -U postgres` → `CREATE DATABASE personal_budget;` → `\l` para conferir (codificação UTF8)
 
 ## 4. Conectar o banco ao servidor
-- [ ] `npm install pg dotenv`
-- [ ] `.env` com `DATABASE_URL=postgres://postgres:SENHA@localhost:5432/personal_budget` e `.env.example` sem a senha
-- [ ] `db/index.js` exportando um `Pool` (e uma função `query`)
-- [ ] Reorganizar: `app.js` (Express) + `server.js` (listen) + `routes/` + middleware central de erros
+- [x] 4a. Usuário dedicado `budget_app`, dono do banco (`db/create-role.sql`), em vez de conectar como `postgres`
+- [x] 4a. `.env` com `DATABASE_URL=postgres://budget_app:SENHA@localhost:5432/personal_budget` e `.env.example` sem a senha
+- [ ] 4b. `npm install pg` (sem `dotenv`: o Node 24 lê o `.env` com `--env-file-if-exists`); scripts `dev`/`start` e `engines`; corrigir `main`
+- [ ] 4b. `db/index.js` exportando `query` e `withTransaction` (e `pool.on('error')`, checagem da `DATABASE_URL` no boot)
+- [ ] 4c. Reorganizar: `app.js` (Express) + `server.js` (listen) + `routes/` + `middleware/errors.js` (refatoração pura, rotas ainda em memória)
 
 ## 5. Criar a tabela de envelopes
 - [ ] `db/schema.sql` com `CREATE TABLE IF NOT EXISTS envelopes (...)`
