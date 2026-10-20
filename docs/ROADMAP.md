@@ -52,9 +52,9 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [ ] Mapear snake_case (banco) ↔ camelCase (JSON) numa função central → adiado para a etapa 9 (as colunas de `envelopes` têm uma palavra só)
 - [x] Tratar erros do Postgres (ex.: `23505` = título duplicado → 409; `23514` = violou CHECK → 400, com mensagem por `err.constraint` (ex.: `envelopes_balance_non_negative` = saldo insuficiente); `23503` = envelope com transações → 409, entra na etapa 8)
 
-## 7. Testar os endpoints (Postman)
-- [ ] Retestar todas as rotas; conferir no psql que os dados persistem após reiniciar o servidor
-- [ ] Conferir status codes e mensagens de erro
+## 7. Testar os endpoints (Postman) ✅
+- [x] Retestar todas as rotas; conferir no psql que os dados persistem após reiniciar o servidor
+- [x] Conferir status codes e mensagens de erro
 
 ## 8. Criar a tabela de transações
 - [ ] Adicionar `transactions` ao `schema.sql` com `REFERENCES envelopes(id)` e a regra de `ON DELETE` escolhida
