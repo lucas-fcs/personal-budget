@@ -25,9 +25,9 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Repositório já existe e tem remote no GitHub (não precisa de `git init`)
 - [x] Criar branch `part-2` (`git switch -c part-2`)
 
-## 3. Criar o banco com psql
-- [ ] Instalar PostgreSQL no Windows (inclui o `psql`)
-- [ ] `psql -U postgres` → `CREATE DATABASE personal_budget;` → `\l` para conferir
+## 3. Criar o banco com psql ✅
+- [x] Instalar PostgreSQL no Windows (inclui o `psql`): versão 18.4 já instalada, serviço `postgresql-x64-18` na porta 5432
+- [x] `psql -U postgres` → `CREATE DATABASE personal_budget;` → `\l` para conferir (codificação UTF8)
 
 ## 4. Conectar o banco ao servidor
 - [ ] `npm install pg dotenv`
