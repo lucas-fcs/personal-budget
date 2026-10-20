@@ -1,118 +1,93 @@
 const express = require('express');
+const db = require('../db');
 const store = require('../data/memoryStore');
+const { HttpError } = require('../middleware/errors');
+const { parseId, parseMoney, parseTitle } = require('../utils/validation');
 
 // Router: um "mini-app" com as rotas de envelopes. É montado em /envelopes no app.js,
 // então aqui os caminhos são relativos ('/' = /envelopes, '/:id' = /envelopes/:id).
+// As colunas são sempre listadas (nunca SELECT *): uma coluna nova na tabela não vaza para a API sem querer.
 const router = express.Router();
 
-// Helper: Encontrar índice do envelope por ID
-const findEnvelopeIndex = (id) => store.envelopes.findIndex(e => e.id === Number(id));
+const notFound = (id) => new HttpError(404, `Envelope com ID ${id} não encontrado.`);
 
 // Criar novo envelope (POST /envelopes)
-router.post('/', (req, res) => {
-  const { title, budget } = req.body;
-
-  if (!title || budget === undefined) {
-    return res.status(400).json({ error: 'Os campos "title" e "budget" são obrigatórios.' });
+router.post('/', async (req, res) => {
+  if (req.body.title === undefined || req.body.budget === undefined) {
+    throw new HttpError(400, 'Os campos "title" e "budget" são obrigatórios.');
   }
+  const title = parseTitle(req.body.title);
+  const budget = parseMoney(req.body.budget, 'budget');
 
-  const parsedBudget = Number(budget);
-  if (isNaN(parsedBudget) || parsedBudget <= 0) {
-    return res.status(400).json({ error: 'O campo "budget" deve ser um número positivo maior que zero.' });
-  }
-
-  const currentAllocated = store.envelopes.reduce((acc, env) => acc + env.budget, 0);
-  if (currentAllocated + parsedBudget > store.totalBudget) {
-    return res.status(400).json({
-      error: `Orçamento excedido. Disponível: R$ ${store.totalBudget - currentAllocated}. Solicitado: R$ ${parsedBudget}.`
-    });
-  }
-
-  const newEnvelope = {
-    id: store.nextId++,
-    title: title.trim(),
-    budget: parsedBudget
-  };
-
-  store.envelopes.push(newEnvelope);
-  return res.status(201).json(newEnvelope);
+  // Um envelope nasce com o saldo igual ao teto: o mesmo parâmetro ($2) vai para as duas colunas.
+  const { rows } = await db.query(
+    `INSERT INTO envelopes (title, budget, balance)
+     VALUES ($1, $2, $2)
+     RETURNING id, title, budget, balance`,
+    [title, budget]
+  );
+  res.status(201).json(rows[0]);
 });
 
 // Listar todos os envelopes (GET /envelopes)
-router.get('/', (req, res) => {
-  return res.status(200).json(store.envelopes);
+router.get('/', async (req, res) => {
+  // Sem ORDER BY, o Postgres não garante ordem nenhuma.
+  const { rows } = await db.query('SELECT id, title, budget, balance FROM envelopes ORDER BY id');
+  res.status(200).json(rows);
 });
 
 // Buscar envelope por ID (GET /envelopes/:id)
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  const envelope = store.envelopes.find(e => e.id === Number(id));
+router.get('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
 
-  if (!envelope) {
-    return res.status(404).json({ error: `Envelope com ID ${id} não encontrado.` });
-  }
+  const { rows } = await db.query('SELECT id, title, budget, balance FROM envelopes WHERE id = $1', [id]);
+  if (rows.length === 0) throw notFound(id);
 
-  return res.status(200).json(envelope);
+  res.status(200).json(rows[0]);
 });
 
-// Atualizar envelope / Extrair valor (PUT /envelopes/:id)
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const index = findEnvelopeIndex(id);
+// Atualizar título e/ou teto (PUT /envelopes/:id). Atualização parcial: só muda o que for enviado.
+router.put('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: `Envelope com ID ${id} não encontrado.` });
+  if (req.body.extract !== undefined) {
+    throw new HttpError(400, 'O campo "extract" não existe mais: gastos agora são registrados como transações (POST /transactions).');
   }
-
-  const { title, budget, extract } = req.body;
-  const currentEnvelope = store.envelopes[index];
-
-  // Extração de saldo (Gasto real)
-  if (extract !== undefined) {
-    const amountToExtract = Number(extract);
-    if (isNaN(amountToExtract) || amountToExtract <= 0) {
-      return res.status(400).json({ error: 'O valor de "extract" deve ser um número positivo.' });
-    }
-    if (amountToExtract > currentEnvelope.budget) {
-      return res.status(400).json({
-        error: `Saldo insuficiente no envelope. Saldo atual: R$ ${currentEnvelope.budget}. Tentativa de extração: R$ ${amountToExtract}.`
-      });
-    }
-    currentEnvelope.budget -= amountToExtract;
-    return res.status(200).json(currentEnvelope);
+  if (req.body.title === undefined && req.body.budget === undefined) {
+    throw new HttpError(400, 'Informe ao menos um dos campos "title" ou "budget".');
   }
+  // null = "não alterar": o COALESCE abaixo mantém o valor atual da coluna.
+  const title = req.body.title === undefined ? null : parseTitle(req.body.title);
+  const budget = req.body.budget === undefined ? null : parseMoney(req.body.budget, 'budget');
 
-  // Atualização de atributos (Título ou novo Teto de Orçamento)
-  if (title) currentEnvelope.title = title.trim();
-  if (budget !== undefined) {
-    const parsedBudget = Number(budget);
-    if (isNaN(parsedBudget) || parsedBudget < 0) {
-      return res.status(400).json({ error: 'O valor de "budget" deve ser um número não negativo.' });
-    }
+  // O saldo acompanha o teto pela diferença (novo − antigo), preservando o que já foi gasto.
+  // Dentro do SET, "budget" à direita ainda é o valor ANTIGO: o Postgres calcula todas as
+  // expressões antes de gravar. Se o novo teto for menor que o já gasto, o saldo ficaria
+  // negativo e a constraint envelopes_balance_non_negative recusa (400).
+  // Uma única instrução sobre uma única linha já é atômica: não precisa de BEGIN/COMMIT.
+  const { rows } = await db.query(
+    `UPDATE envelopes
+     SET title   = COALESCE($2, title),
+         budget  = COALESCE($3, budget),
+         balance = balance + (COALESCE($3, budget) - budget)
+     WHERE id = $1
+     RETURNING id, title, budget, balance`,
+    [id, title, budget]
+  );
+  if (rows.length === 0) throw notFound(id);
 
-    const otherAllocated = store.envelopes.reduce((acc, env) => env.id === currentEnvelope.id ? acc : acc + env.budget, 0);
-    if (otherAllocated + parsedBudget > store.totalBudget) {
-      return res.status(400).json({
-        error: `Orçamento excedido. Limite global disponível: R$ ${store.totalBudget - otherAllocated}.`
-      });
-    }
-    currentEnvelope.budget = parsedBudget;
-  }
-
-  return res.status(200).json(currentEnvelope);
+  res.status(200).json(rows[0]);
 });
 
-//Excluir envelope (DELETE /envelopes/:id)
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  const index = findEnvelopeIndex(id);
+// Excluir envelope (DELETE /envelopes/:id)
+router.delete('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: `Envelope com ID ${id} não encontrado.` });
-  }
+  // Apaga e confirma numa instrução só: rowCount diz se alguma linha foi removida.
+  const { rowCount } = await db.query('DELETE FROM envelopes WHERE id = $1', [id]);
+  if (rowCount === 0) throw notFound(id);
 
-  store.envelopes.splice(index, 1);
-  return res.status(204).send();
+  res.status(204).send();
 });
 
 // Transferir valores entre envelopes (POST /envelopes/transfer/:from/:to)

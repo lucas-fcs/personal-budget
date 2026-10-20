@@ -1,6 +1,5 @@
 const express = require('express');
 const db = require('./db');
-const store = require('./data/memoryStore');
 const envelopesRouter = require('./routes/envelopes');
 const { notFound, errorHandler } = require('./middleware/errors');
 
@@ -11,19 +10,24 @@ const app = express();
 // Middleware para parsing de JSON
 app.use(express.json());
 
+// No Express 5, req.body fica undefined quando a requisição não tem corpo JSON;
+// sem isto, ler req.body.title lançaria TypeError (erro 500) em vez de um 400 de validação.
+app.use((req, res, next) => {
+  req.body ??= {};
+  next();
+});
+
 // Rota de Health Check e Resumo Orçamentário
 app.get('/', async (req, res) => {
-  // Prova de conexão com o banco (passo 4b); o resumo abaixo ainda vem da memória até a etapa 6.
-  const { rows } = await db.query('SELECT NOW() AS now');
-  const allocatedBudget = store.envelopes.reduce((acc, env) => acc + env.budget, 0);
-  res.status(200).json({
-    message: 'API Personal Budget ativa.',
-    databaseTime: rows[0].now,
-    totalBudget: store.totalBudget,
-    allocatedBudget,
-    remainingBudget: store.totalBudget - allocatedBudget,
-    envelopesCount: store.envelopes.length
-  });
+  // COUNT devolve bigint (o pg o entregaria como string), por isso o ::int.
+  // SUM de zero linhas é NULL; o COALESCE troca por 0 e o ::numeric(14,2) padroniza "0.00".
+  const { rows } = await db.query(
+    `SELECT COUNT(*)::int                             AS "envelopesCount",
+            COALESCE(SUM(budget), 0)::numeric(14, 2)  AS "totalBudget",
+            COALESCE(SUM(balance), 0)::numeric(14, 2) AS "totalBalance"
+     FROM envelopes`
+  );
+  res.status(200).json({ message: 'API Personal Budget ativa.', ...rows[0] });
 });
 
 app.use('/envelopes', envelopesRouter);
