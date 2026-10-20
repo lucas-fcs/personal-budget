@@ -29,12 +29,12 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Instalar PostgreSQL no Windows (inclui o `psql`): versão 18.4 já instalada, serviço `postgresql-x64-18` na porta 5432
 - [x] `psql -U postgres` → `CREATE DATABASE personal_budget;` → `\l` para conferir (codificação UTF8)
 
-## 4. Conectar o banco ao servidor
+## 4. Conectar o banco ao servidor ✅
 - [x] 4a. Usuário dedicado `budget_app`, dono do banco (`db/create-role.sql`), em vez de conectar como `postgres`
 - [x] 4a. `.env` com `DATABASE_URL=postgres://budget_app:SENHA@localhost:5432/personal_budget` e `.env.example` sem a senha
 - [x] 4b. `npm install pg` (sem `dotenv`: o Node 24 lê o `.env` com `--env-file-if-exists`); scripts `dev`/`start` e `engines`; corrigir `main`
 - [x] 4b. `db/index.js` exportando `query` e `withTransaction` (e `pool.on('error')`, checagem da `DATABASE_URL` no boot)
-- [ ] 4c. Reorganizar: `app.js` (Express) + `server.js` (listen) + `routes/` + `middleware/errors.js` (refatoração pura, rotas ainda em memória)
+- [x] 4c. Reorganizar: `app.js` (Express) + `server.js` (listen) + `routes/` + `middleware/errors.js` (refatoração pura, rotas ainda em memória)
 
 ## 5. Criar a tabela de envelopes
 - [ ] `db/schema.sql` com `CREATE TABLE IF NOT EXISTS envelopes (...)`
