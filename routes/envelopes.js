@@ -1,6 +1,5 @@
 const express = require('express');
 const db = require('../db');
-const store = require('../data/memoryStore');
 const { HttpError } = require('../middleware/errors');
 const { parseId, parseMoney, parseTitle } = require('../utils/validation');
 
@@ -91,43 +90,49 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Transferir valores entre envelopes (POST /envelopes/transfer/:from/:to)
-router.post('/transfer/:from/:to', (req, res) => {
-  const { from, to } = req.params;
-  const { amount } = req.body;
-
-  if (from === to) {
-    return res.status(400).json({ error: 'Os envelopes de origem e destino não podem ser idênticos.' });
+// Move budget E balance juntos: é uma realocação do planejamento, que preserva o invariante
+// budget − balance = soma das transações (ver docs/database.md).
+router.post('/transfer/:from/:to', async (req, res) => {
+  const fromId = parseId(req.params.from, 'ID de origem');
+  const toId = parseId(req.params.to, 'ID de destino');
+  if (fromId === toId) {
+    throw new HttpError(400, 'Os envelopes de origem e destino não podem ser idênticos.');
   }
-
-  const transferAmount = Number(amount);
-  if (!amount || isNaN(transferAmount) || transferAmount <= 0) {
-    return res.status(400).json({ error: 'Informe um "amount" numérico e positivo no corpo da requisição.' });
+  if (req.body.amount === undefined) {
+    throw new HttpError(400, 'O campo "amount" é obrigatório.');
   }
+  const amount = parseMoney(req.body.amount, 'amount', { positive: true });
 
-  const originEnvelope = store.envelopes.find(e => e.id === Number(from));
-  const destinationEnvelope = store.envelopes.find(e => e.id === Number(to));
+  const steps = [
+    { id: fromId, role: 'origem', sql: 'UPDATE envelopes SET budget = budget - $2, balance = balance - $2 WHERE id = $1 RETURNING id, title, budget, balance' },
+    { id: toId, role: 'destino', sql: 'UPDATE envelopes SET budget = budget + $2, balance = balance + $2 WHERE id = $1 RETURNING id, title, budget, balance' }
+  ];
+  // Cada UPDATE trava a linha até o COMMIT. Se uma transferência A→B e outra B→A rodassem ao mesmo
+  // tempo, cada uma travaria uma linha e esperaria a outra para sempre (deadlock). Atualizar sempre
+  // na mesma ordem (menor id primeiro) faz a segunda esperar a primeira terminar, em vez de travar.
+  steps.sort((a, b) => a.id - b.id);
 
-  if (!originEnvelope) {
-    return res.status(404).json({ error: `Envelope de origem (ID ${from}) não encontrado.` });
-  }
-  if (!destinationEnvelope) {
-    return res.status(404).json({ error: `Envelope de destino (ID ${to}) não encontrado.` });
-  }
+  // Os dois UPDATEs valem juntos ou nenhum vale: qualquer erro lançado aqui dentro (404 ou a
+  // constraint de saldo) faz o withTransaction executar ROLLBACK, desfazendo o UPDATE que já tinha rodado.
+  const updated = await db.withTransaction(async (client) => {
+    const envelopes = {};
+    for (const step of steps) {
+      const { rows } = await client.query(step.sql, [step.id, amount]);
+      if (rows.length === 0) {
+        throw new HttpError(404, `Envelope de ${step.role} (ID ${step.id}) não encontrado.`);
+      }
+      envelopes[step.role] = rows[0];
+    }
+    return envelopes;
+  });
+  // Saldo insuficiente não é verificado com um SELECT antes: entre a leitura e o UPDATE, outra
+  // requisição poderia gastar o mesmo dinheiro. A constraint envelopes_balance_non_negative barra
+  // o UPDATE da origem no próprio banco, e o error handler responde 400.
 
-  if (originEnvelope.budget < transferAmount) {
-    return res.status(400).json({
-      error: `Saldo insuficiente no envelope de origem ("${originEnvelope.title}"). Saldo atual: R$ ${originEnvelope.budget}.`
-    });
-  }
-
-  // Operação Atômica de Transferência
-  originEnvelope.budget -= transferAmount;
-  destinationEnvelope.budget += transferAmount;
-
-  return res.status(200).json({
-    message: `R$ ${transferAmount} transferidos com sucesso de "${originEnvelope.title}" para "${destinationEnvelope.title}".`,
-    from: originEnvelope,
-    to: destinationEnvelope
+  res.status(200).json({
+    message: `R$ ${amount} transferidos com sucesso de "${updated.origem.title}" para "${updated.destino.title}".`,
+    from: updated.origem,
+    to: updated.destino
   });
 });
 

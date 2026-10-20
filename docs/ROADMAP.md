@@ -41,15 +41,16 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Rodar como `budget_app` (dono do banco): `psql -U budget_app -h localhost -d personal_budget -v ON_ERROR_STOP=1 --single-transaction -f db/schema.sql`
 - [x] Conferir no psql: `\dt` e `\d envelopes` (dono `budget_app`, 5 CHECKs, índice único)
 
-## 6. Atualizar as requisições de envelopes
-- [ ] GET/POST/PUT/DELETE `/envelopes` com `pool.query('SQL ... $1', [valor])`
-- [ ] Transferência com `BEGIN` / `COMMIT` / `ROLLBACK` num client do pool
-- [ ] Remover o `extract` do PUT (gasto vira transação na etapa 8)
-- [ ] Remover `totalBudget` e a validação de orçamento global; `GET /` passa a mostrar só os totais alocado e disponível
-- [ ] PUT do `budget` ajusta o `balance` pela diferença; transferência move `budget` e `balance`
-- [ ] Recusar valores com mais de 2 casas decimais (o `NUMERIC(12,2)` arredondaria em silêncio: 10.005 → 10.01)
-- [ ] `budget >= 0` tanto no POST quanto no PUT; mapear snake_case (banco) ↔ camelCase (JSON) numa função central
-- [ ] Tratar erros do Postgres (ex.: `23505` = título duplicado → 409; `23514` = violou CHECK → 400, com mensagem por `err.constraint` (ex.: `envelopes_balance_non_negative` = saldo insuficiente); `23503` = envelope com transações → 409)
+## 6. Atualizar as requisições de envelopes ✅
+- [x] GET/POST/PUT/DELETE `/envelopes` com `pool.query('SQL ... $1', [valor])` (validação de formato em `utils/validation.js`)
+- [x] Transferência com `BEGIN` / `COMMIT` / `ROLLBACK` num client do pool (`withTransaction`, UPDATEs em ordem de id para evitar deadlock)
+- [x] Remover o `extract` do PUT (gasto vira transação na etapa 8)
+- [x] Remover `totalBudget` e a validação de orçamento global; `GET /` passa a mostrar só os totais alocado e disponível
+- [x] PUT do `budget` ajusta o `balance` pela diferença; transferência move `budget` e `balance`
+- [x] Recusar valores com mais de 2 casas decimais (o `NUMERIC(12,2)` arredondaria em silêncio: 10.005 → 10.01)
+- [x] `budget >= 0` tanto no POST quanto no PUT
+- [ ] Mapear snake_case (banco) ↔ camelCase (JSON) numa função central → adiado para a etapa 9 (as colunas de `envelopes` têm uma palavra só)
+- [x] Tratar erros do Postgres (ex.: `23505` = título duplicado → 409; `23514` = violou CHECK → 400, com mensagem por `err.constraint` (ex.: `envelopes_balance_non_negative` = saldo insuficiente); `23503` = envelope com transações → 409, entra na etapa 8)
 
 ## 7. Testar os endpoints (Postman)
 - [ ] Retestar todas as rotas; conferir no psql que os dados persistem após reiniciar o servidor
