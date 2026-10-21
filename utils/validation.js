@@ -50,4 +50,30 @@ function parseText(value, field) {
   return text;
 }
 
-module.exports = { parseId, parseMoney, parseText };
+// "Hoje" no fuso do app, como texto YYYY-MM-DD (o formato en-CA). Mesmo fuso das conexões do pool
+// (db/index.js), para a API e o CURRENT_DATE do banco concordarem sobre que dia é hoje.
+const todayInAppTimeZone = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+// Data de calendário no formato YYYY-MM-DD. Devolve o próprio texto, que o Postgres converte para DATE.
+function parseDate(value, field) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new HttpError(400, `O campo "${field}" deve ser uma data no formato AAAA-MM-DD (ex.: 2026-10-21).`);
+  }
+
+  // O formato pode estar certo e a data não existir (2026-02-30). Montamos a data em UTC e conferimos
+  // se dia, mês e ano voltaram iguais: o JavaScript "transborda" datas inválidas (30/02 vira 02/03).
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new HttpError(400, `O campo "${field}" não é uma data válida.`);
+  }
+
+  // Strings YYYY-MM-DD podem ser comparadas como texto: a ordem alfabética é a ordem cronológica.
+  if (value > todayInAppTimeZone()) {
+    throw new HttpError(400, `O campo "${field}" não pode ser uma data futura.`);
+  }
+  return value;
+}
+
+module.exports = { parseId, parseMoney, parseText, parseDate };
