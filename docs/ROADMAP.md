@@ -61,12 +61,12 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] `\d transactions` para conferir a chave estrangeira
 - [x] `DATE` devolvido como texto `YYYY-MM-DD` e fuso `America/Sao_Paulo` no Pool; auditoria do invariante em `db/check-invariant.sql`
 
-## 9. Endpoints de transações
+## 9. Endpoints de transações ✅
 - [x] 9b. `POST /transactions` — cria e debita o envelope, numa transação SQL (debita antes de inserir; envelope inexistente → 422)
 - [x] 9a. `GET /transactions`, `GET /transactions/:id`, `GET /envelopes/:id/transactions` (mais recentes primeiro; JSON em camelCase via `utils/mappers.js`)
-- [ ] `PUT /transactions/:id` — ajusta o saldo pela diferença (e lida com troca de envelope)
+- [x] 9c. `PUT /transactions/:id` — ajusta o saldo pela diferença (e lida com troca de envelope) (mapa de ajustes por envelope, `FOR UPDATE` na transação, envelopes em ordem de id)
 - [x] 9b. `DELETE /transactions/:id` — devolve o valor ao envelope
-- [ ] Validações: saldo insuficiente, envelope inexistente, valor/data inválidos
+- [x] Validações: saldo insuficiente, envelope inexistente, valor/data inválidos
 
 ## 10. Testar as transações
 - [ ] Criar 2 envelopes, várias transações, editar, apagar; conferir os saldos a cada passo

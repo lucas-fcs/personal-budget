@@ -28,7 +28,8 @@ function parseMoney(value, field, { positive = false } = {}) {
 
   const text = String(value).trim();
   if (!/^\d{1,10}(\.\d{1,2})?$/.test(text)) {
-    throw new HttpError(400, `O campo "${field}" deve ser um valor não negativo, com no máximo 2 casas decimais (ex.: 150.75).`);
+    const sign = positive ? 'maior que zero' : 'não negativo';
+    throw new HttpError(400, `O campo "${field}" deve ser um valor ${sign}, com no máximo 2 casas decimais (ex.: 150.75).`);
   }
   // Zero é qualquer valor sem um dígito de 1 a 9 ("0", "0.00"); comparamos o texto para não usar float.
   if (positive && !/[1-9]/.test(text)) {
