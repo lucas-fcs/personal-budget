@@ -68,9 +68,10 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] 9b. `DELETE /transactions/:id` — devolve o valor ao envelope
 - [x] Validações: saldo insuficiente, envelope inexistente, valor/data inválidos
 
-## 10. Testar as transações
-- [ ] Criar 2 envelopes, várias transações, editar, apagar; conferir os saldos a cada passo
-- [ ] Casos de erro: saldo insuficiente, envelope inexistente, apagar envelope com transações
+## 10. Testar as transações ✅
+- [x] Criar 2 envelopes, várias transações, editar, apagar; conferir os saldos a cada passo (com `db/check-invariant.sql` após cada passo, inclusive após uma transferência)
+- [x] Casos de erro: saldo insuficiente, envelope inexistente, apagar envelope com transações
+- [x] Concorrência: POSTs, PUTs e DELETEs simultâneos sem deadlock e com a auditoria em 0 (etapa 9)
 
 ## 11. Documentação Swagger
 - [ ] `swagger-ui-express` + `docs/openapi.yaml` (OpenAPI 3)
