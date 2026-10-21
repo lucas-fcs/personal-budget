@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('./db');
 const envelopesRouter = require('./routes/envelopes');
+const transactionsRouter = require('./routes/transactions');
 const { notFound, errorHandler } = require('./middleware/errors');
 
 // Este arquivo só monta o app (middlewares, rotas, tratamento de erros) e o exporta.
@@ -31,6 +32,7 @@ app.get('/', async (req, res) => {
 });
 
 app.use('/envelopes', envelopesRouter);
+app.use('/transactions', transactionsRouter);
 
 // A ordem importa: o 404 vem depois de todas as rotas, e o error handler é sempre o último.
 app.use(notFound);

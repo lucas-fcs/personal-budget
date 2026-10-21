@@ -63,7 +63,7 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 
 ## 9. Endpoints de transações
 - [ ] `POST /transactions` — cria e debita o envelope, numa transação SQL
-- [ ] `GET /transactions`, `GET /transactions/:id`, `GET /envelopes/:id/transactions`
+- [x] 9a. `GET /transactions`, `GET /transactions/:id`, `GET /envelopes/:id/transactions` (mais recentes primeiro; JSON em camelCase via `utils/mappers.js`)
 - [ ] `PUT /transactions/:id` — ajusta o saldo pela diferença (e lida com troca de envelope)
 - [ ] `DELETE /transactions/:id` — devolve o valor ao envelope
 - [ ] Validações: saldo insuficiente, envelope inexistente, valor/data inválidos
@@ -86,3 +86,4 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 ## 13. Próximos passos (opcional)
 - [ ] Front-end simples (HTML/CSS/JS) ou React consumindo a API
 - [ ] Tabela `transfers` para histórico de transferências (duas chaves estrangeiras para `envelopes`, `CHECK (from <> to)`)
+- [ ] Paginação em `GET /transactions` (`LIMIT`/`OFFSET` ou cursor) se o volume crescer

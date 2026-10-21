@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { HttpError } = require('../middleware/errors');
-const { parseId, parseMoney, parseTitle } = require('../utils/validation');
+const { parseId, parseMoney, parseText } = require('../utils/validation');
+const { TRANSACTION_COLUMNS, toTransaction } = require('../utils/mappers');
 
 // Router: um "mini-app" com as rotas de envelopes. É montado em /envelopes no app.js,
 // então aqui os caminhos são relativos ('/' = /envelopes, '/:id' = /envelopes/:id).
@@ -15,7 +16,7 @@ router.post('/', async (req, res) => {
   if (req.body.title === undefined || req.body.budget === undefined) {
     throw new HttpError(400, 'Os campos "title" e "budget" são obrigatórios.');
   }
-  const title = parseTitle(req.body.title);
+  const title = parseText(req.body.title, 'title');
   const budget = parseMoney(req.body.budget, 'budget');
 
   // Um envelope nasce com o saldo igual ao teto: o mesmo parâmetro ($2) vai para as duas colunas.
@@ -45,6 +46,22 @@ router.get('/:id', async (req, res) => {
   res.status(200).json(rows[0]);
 });
 
+// Listar as transações de um envelope (GET /envelopes/:id/transactions)
+// Envelope inexistente → 404; envelope sem transações → [] (respostas diferentes, pois dizem coisas diferentes).
+router.get('/:id/transactions', async (req, res) => {
+  const id = parseId(req.params.id);
+
+  const envelope = await db.query('SELECT 1 FROM envelopes WHERE id = $1', [id]);
+  if (envelope.rows.length === 0) throw notFound(id);
+
+  // Usa o índice transactions_envelope_id_idx (criado na etapa 8) para achar as linhas do envelope.
+  const { rows } = await db.query(
+    `SELECT ${TRANSACTION_COLUMNS} FROM transactions WHERE envelope_id = $1 ORDER BY spent_on DESC, id DESC`,
+    [id]
+  );
+  res.status(200).json(rows.map(toTransaction));
+});
+
 // Atualizar título e/ou teto (PUT /envelopes/:id). Atualização parcial: só muda o que for enviado.
 router.put('/:id', async (req, res) => {
   const id = parseId(req.params.id);
@@ -56,7 +73,7 @@ router.put('/:id', async (req, res) => {
     throw new HttpError(400, 'Informe ao menos um dos campos "title" ou "budget".');
   }
   // null = "não alterar": o COALESCE abaixo mantém o valor atual da coluna.
-  const title = req.body.title === undefined ? null : parseTitle(req.body.title);
+  const title = req.body.title === undefined ? null : parseText(req.body.title, 'title');
   const budget = req.body.budget === undefined ? null : parseMoney(req.body.budget, 'budget');
 
   // O saldo acompanha o teto pela diferença (novo − antigo), preservando o que já foi gasto.

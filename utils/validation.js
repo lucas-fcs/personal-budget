@@ -37,16 +37,17 @@ function parseMoney(value, field, { positive = false } = {}) {
   return text;
 }
 
-// Título do envelope. O tamanho máximo (100) é verificado pelo banco (envelopes_title_length).
-function parseTitle(value) {
+// Texto obrigatório (title do envelope, recipient da transação), sem espaços nas pontas.
+// O tamanho máximo (100) é verificado pelo banco (envelopes_title_length, transactions_recipient_length).
+function parseText(value, field) {
   if (typeof value !== 'string') {
-    throw new HttpError(400, 'O campo "title" deve ser um texto.');
+    throw new HttpError(400, `O campo "${field}" deve ser um texto.`);
   }
-  const title = value.trim();
-  if (!title) {
-    throw new HttpError(400, 'O campo "title" não pode ser vazio.');
+  const text = value.trim();
+  if (!text) {
+    throw new HttpError(400, `O campo "${field}" não pode ser vazio.`);
   }
-  return title;
+  return text;
 }
 
-module.exports = { parseId, parseMoney, parseTitle };
+module.exports = { parseId, parseMoney, parseText };
