@@ -56,9 +56,10 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Retestar todas as rotas; conferir no psql que os dados persistem após reiniciar o servidor
 - [x] Conferir status codes e mensagens de erro
 
-## 8. Criar a tabela de transações
-- [ ] Adicionar `transactions` ao `schema.sql` com `REFERENCES envelopes(id)` e a regra de `ON DELETE` escolhida
-- [ ] `\d transactions` para conferir a chave estrangeira
+## 8. Criar a tabela de transações ✅
+- [x] Adicionar `transactions` ao `schema.sql` com `REFERENCES envelopes(id)` e a regra de `ON DELETE` escolhida (`ON DELETE RESTRICT`, constraints nomeadas, índice em `envelope_id`)
+- [x] `\d transactions` para conferir a chave estrangeira
+- [x] `DATE` devolvido como texto `YYYY-MM-DD` e fuso `America/Sao_Paulo` no Pool; auditoria do invariante em `db/check-invariant.sql`
 
 ## 9. Endpoints de transações
 - [ ] `POST /transactions` — cria e debita o envelope, numa transação SQL

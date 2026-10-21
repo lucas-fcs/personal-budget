@@ -34,3 +34,28 @@ CREATE TABLE IF NOT EXISTS envelopes (
 -- Precisa ser um índice porque a constraint UNIQUE não aceita expressões como LOWER(title).
 -- Uma violação gera o erro 23505, com o nome do índice em err.constraint.
 CREATE UNIQUE INDEX IF NOT EXISTS envelopes_title_lower_unique ON envelopes (LOWER(title));
+
+-- Cada transação é um gasto que sai de exatamente um envelope (relação um-para-muitos).
+CREATE TABLE IF NOT EXISTS transactions (
+  id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  -- NOT NULL é obrigatório: uma chave estrangeira aceita NULL por padrão (transação "sem envelope").
+  envelope_id INTEGER NOT NULL,
+  amount      NUMERIC(12, 2) NOT NULL,
+  recipient   TEXT NOT NULL,
+  -- Data do calendário, sem hora. CURRENT_DATE usa o fuso da sessão, que o db/index.js fixa em
+  -- America/Sao_Paulo (senão, no Render em UTC, uma compra às 22h cairia no dia seguinte).
+  spent_on    DATE NOT NULL DEFAULT CURRENT_DATE,
+
+  -- Chave estrangeira: todo envelope_id precisa existir em envelopes(id).
+  -- ON DELETE RESTRICT: apagar um envelope que tem transações é recusado (erro 23503 → 409 na API),
+  -- em vez de apagar o histórico financeiro junto (CASCADE).
+  CONSTRAINT transactions_envelope_id_fkey
+    FOREIGN KEY (envelope_id) REFERENCES envelopes (id) ON DELETE RESTRICT,
+  CONSTRAINT transactions_amount_positive   CHECK (amount > 0),
+  CONSTRAINT transactions_recipient_trimmed CHECK (recipient = BTRIM(recipient)),
+  CONSTRAINT transactions_recipient_length  CHECK (char_length(recipient) BETWEEN 1 AND 100)
+);
+
+-- O Postgres NÃO cria índice para chaves estrangeiras (só para PRIMARY KEY e UNIQUE).
+-- Este índice acelera GET /envelopes/:id/transactions e a checagem do RESTRICT ao apagar um envelope.
+CREATE INDEX IF NOT EXISTS transactions_envelope_id_idx ON transactions (envelope_id);

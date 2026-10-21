@@ -12,11 +12,17 @@ class HttpError extends Error {
 const PG_CONSTRAINT_ERRORS = {
   envelopes_title_lower_unique: [409, 'Já existe um envelope com esse título.'],
   envelopes_title_length: [400, 'O título deve ter entre 1 e 100 caracteres.'],
-  envelopes_balance_non_negative: [400, 'Saldo insuficiente: a operação deixaria o saldo do envelope negativo.']
+  envelopes_balance_non_negative: [400, 'Saldo insuficiente: a operação deixaria o saldo do envelope negativo.'],
+  // Só ocorre ao apagar um envelope com transações: as rotas de transações debitam o envelope
+  // ANTES de inserir, então um envelope inexistente vira 404 antes de chegar à chave estrangeira.
+  transactions_envelope_id_fkey: [409, 'Este envelope tem transações vinculadas e não pode ser apagado.'],
+  transactions_amount_positive: [400, 'O valor da transação deve ser maior que zero.'],
+  transactions_recipient_length: [400, 'O destinatário deve ter entre 1 e 100 caracteres.']
 };
 
 // ...e, se a constraint não estiver mapeada, pelo código do erro (SQLSTATE).
 const PG_CODE_ERRORS = {
+  23503: [409, 'Operação recusada: existem registros vinculados.'],    // foreign_key_violation
   23505: [409, 'Já existe um registro com esses dados.'],              // unique_violation
   23514: [400, 'Os dados enviados violam uma regra de validação.'],    // check_violation
   22003: [400, 'Valor numérico fora do limite permitido.']             // numeric_value_out_of_range

@@ -1,4 +1,4 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 
 // Falha cedo e com mensagem clara, em vez de um erro de conexão confuso na primeira requisição.
 if (!process.env.DATABASE_URL) {
@@ -6,9 +6,19 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// Por padrão o pg converte DATE em Date do JavaScript à meia-noite LOCAL, e o JSON o serializa em UTC:
+// '2026-10-21' viraria "2026-10-21T03:00:00.000Z" (e dia 20 para um cliente em UTC).
+// Uma data de calendário não tem hora nem fuso, então mantemos o texto 'YYYY-MM-DD' (1082 = OID do tipo DATE).
+types.setTypeParser(types.builtins.DATE, (value) => value);
+
 // O Pool mantém algumas conexões abertas (10 por padrão) e as reaproveita entre requisições.
 // Abrir uma conexão nova a cada requisição seria lento: cada uma exige handshake e autenticação.
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Fuso de cada sessão aberta pelo pool: CURRENT_DATE e NOW() passam a seguir o horário de Brasília,
+  // em dev e no Render (que roda em UTC), sem configurar nada no servidor do banco.
+  options: '-c timezone=America/Sao_Paulo'
+});
 
 // Uma conexão ociosa pode cair (ex.: o Postgres reiniciou). Sem este listener, o erro derrubaria o processo.
 // O pool já descarta a conexão quebrada sozinho; aqui só registramos o ocorrido.
