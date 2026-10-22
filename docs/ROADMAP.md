@@ -75,7 +75,7 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 
 ## 11. Documentação Swagger
 - [x] 11a. `swagger-ui-express` + `docs/openapi.yaml` (OpenAPI 3.0.3; o Swagger UI lê o YAML no navegador, sem parser no servidor)
-- [ ] Schemas `Envelope`, `Transaction`, `Error`; exemplos de request/response; todos os status codes
+- [ ] Schemas `Envelope`, `Transaction`, `Error`; exemplos de request/response; todos os status codes (11b: envelopes e transferência feitos, mensagens conferidas contra a API; falta 11c: transações)
 - [x] 11a. Rota `/api-docs` (e `/api-docs/openapi.yaml` para importar no Postman)
 - [ ] Lint sem erros: `npx @redocly/cli lint docs/openapi.yaml`
 
