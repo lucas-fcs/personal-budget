@@ -254,6 +254,37 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /envelopes/{id}/transactions:
+    get:
+      tags: [Transações]
+      summary: Listar transações de um envelope
+      description: Da mais recente para a mais antiga. Envelope sem transações devolve lista vazia.
+      operationId: listEnvelopeTransactions
+      parameters:
+        - $ref: '#/components/parameters/EnvelopeId'
+      responses:
+        '200':
+          description: Transações do envelope (pode ser vazia)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidId:
+                  $ref: '#/components/examples/InvalidId'
+        '404':
+          $ref: '#/components/responses/EnvelopeNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /envelopes/transfer/{from}/{to}:
     post:
       tags: [Envelopes]
@@ -321,6 +352,196 @@ paths:
                 destination:
                   summary: Destino inexistente
                   value: { error: Envelope de destino (ID 42) não encontrado. }
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /transactions:
+    get:
+      tags: [Transações]
+      summary: Listar transações
+      description: Todas as transações, da mais recente para a mais antiga (como num extrato).
+      operationId: listTransactions
+      responses:
+        '200':
+          description: Lista de transações (vazia se não houver nenhuma)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Transações]
+      summary: Registrar gasto
+      description: |
+        Registra a transação e debita o valor do saldo do envelope, numa única transação SQL
+        (ou as duas coisas acontecem, ou nenhuma). O teto (`budget`) do envelope não muda.
+      operationId: createTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreate'
+            examples:
+              today:
+                summary: Gasto de hoje (sem data)
+                value: { envelopeId: 1, amount: '45.90', recipient: Padaria }
+              withDate:
+                summary: Gasto com data
+                value: { envelopeId: 1, amount: 120, recipient: Supermercado, spentOn: '2026-10-19' }
+      responses:
+        '201':
+          description: Transação registrada e saldo do envelope debitado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Dados inválidos ou saldo insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingFields:
+                  summary: Campo obrigatório ausente
+                  value: { error: 'Os campos "envelopeId", "amount" e "recipient" são obrigatórios.' }
+                insufficientBalance:
+                  $ref: '#/components/examples/InsufficientBalance'
+                invalidAmount:
+                  $ref: '#/components/examples/InvalidAmount'
+                emptyRecipient:
+                  $ref: '#/components/examples/EmptyRecipient'
+                invalidDateFormat:
+                  $ref: '#/components/examples/InvalidDateFormat'
+                nonexistentDate:
+                  $ref: '#/components/examples/NonexistentDate'
+                futureDate:
+                  $ref: '#/components/examples/FutureDate'
+                invalidEnvelopeId:
+                  summary: envelopeId que não é inteiro positivo
+                  value: { error: 'envelopeId inválido: deve ser um número inteiro positivo.' }
+        '422':
+          $ref: '#/components/responses/EnvelopeInBodyNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /transactions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TransactionId'
+
+    get:
+      tags: [Transações]
+      summary: Buscar transação
+      operationId: getTransaction
+      responses:
+        '200':
+          description: Transação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidId:
+                  $ref: '#/components/examples/InvalidId'
+        '404':
+          $ref: '#/components/responses/TransactionNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Transações]
+      summary: Editar transação
+      description: |
+        Atualização **parcial**: só os campos enviados mudam. Pode mudar valor, envelope, destinatário e
+        data, em qualquer combinação.
+
+        Os saldos são ajustados juntos, numa única transação SQL: o envelope antigo recebe de volta o
+        valor antigo e o envelope novo paga o valor novo. Exemplos:
+        - mesmo envelope, valor 100 → 150: o saldo do envelope cai 50;
+        - envelope A → B, valor 100: o saldo de A sobe 100 e o de B cai 100.
+
+        Se o envelope novo não existir (422) ou não tiver saldo (400), nada é alterado.
+      operationId: updateTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionUpdate'
+            examples:
+              amount:
+                summary: Corrigir o valor
+                value: { amount: '30.00' }
+              move:
+                summary: Mover para outro envelope
+                value: { envelopeId: 2 }
+              recipientAndDate:
+                summary: Corrigir destinatário e data (saldos não mudam)
+                value: { recipient: Padaria Central, spentOn: '2026-10-18' }
+      responses:
+        '200':
+          description: Transação atualizada e saldos ajustados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Dados inválidos ou saldo insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                noFields:
+                  summary: Nenhum campo informado
+                  value: { error: 'Informe ao menos um dos campos "envelopeId", "amount", "recipient" ou "spentOn".' }
+                insufficientBalance:
+                  $ref: '#/components/examples/InsufficientBalance'
+                invalidAmount:
+                  $ref: '#/components/examples/InvalidAmount'
+                emptyRecipient:
+                  $ref: '#/components/examples/EmptyRecipient'
+                futureDate:
+                  $ref: '#/components/examples/FutureDate'
+                invalidId:
+                  $ref: '#/components/examples/InvalidId'
+        '404':
+          $ref: '#/components/responses/TransactionNotFound'
+        '422':
+          $ref: '#/components/responses/EnvelopeInBodyNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Transações]
+      summary: Apagar transação
+      description: Apaga a transação e devolve o valor ao saldo do envelope, numa única transação SQL.
+      operationId: deleteTransaction
+      responses:
+        '204':
+          description: Transação apagada e valor devolvido (sem corpo na resposta)
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidId:
+                  $ref: '#/components/examples/InvalidId'
+        '404':
+          $ref: '#/components/responses/TransactionNotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -446,7 +667,91 @@ components:
         from: { id: 1, title: Mercado, budget: '400.00', balance: '354.10' }
         to: { id: 2, title: Lazer, budget: '300.00', balance: '300.00' }
 
+    Recipient:
+      type: string
+      description: Quem recebeu o pagamento. Espaços nas pontas são removidos.
+      minLength: 1
+      maxLength: 100
+      example: Padaria
+
+    SpentOn:
+      type: string
+      format: date
+      description: Data do gasto (AAAA-MM-DD), no fuso de Brasília. Não pode ser futura.
+      example: '2026-10-21'
+
+    Transaction:
+      type: object
+      required: [id, envelopeId, amount, recipient, spentOn]
+      properties:
+        id:
+          type: integer
+          example: 1
+        envelopeId:
+          type: integer
+          description: Envelope de onde o valor saiu.
+          example: 1
+        amount:
+          $ref: '#/components/schemas/Money'
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        spentOn:
+          $ref: '#/components/schemas/SpentOn'
+      example:
+        id: 1
+        envelopeId: 1
+        amount: '45.90'
+        recipient: Padaria
+        spentOn: '2026-10-21'
+
+    TransactionCreate:
+      type: object
+      required: [envelopeId, amount, recipient]
+      properties:
+        envelopeId:
+          type: integer
+          minimum: 1
+          example: 1
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/MoneyInput'
+          description: Valor gasto; deve ser maior que zero e caber no saldo do envelope.
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        spentOn:
+          allOf:
+            - $ref: '#/components/schemas/SpentOn'
+          description: Opcional; se omitida, vale a data de hoje (fuso de Brasília).
+
+    TransactionUpdate:
+      type: object
+      description: Atualização parcial; informe ao menos um campo.
+      minProperties: 1
+      properties:
+        envelopeId:
+          type: integer
+          minimum: 1
+          description: Mover a transação para outro envelope.
+          example: 2
+        amount:
+          $ref: '#/components/schemas/MoneyInput'
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        spentOn:
+          $ref: '#/components/schemas/SpentOn'
+
   parameters:
+    TransactionId:
+      name: id
+      in: path
+      required: true
+      description: ID da transação.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+        example: 1
+
     EnvelopeId:
       name: id
       in: path
@@ -481,8 +786,47 @@ components:
     EnvelopeNotFound:
       summary: Envelope inexistente
       value: { error: Envelope com ID 42 não encontrado. }
+    TransactionNotFound:
+      summary: Transação inexistente
+      value: { error: Transação com ID 99 não encontrada. }
+    InvalidAmount:
+      summary: Valor zero, negativo ou com mais de 2 casas
+      value: { error: 'O campo "amount" deve ser um valor maior que zero, com no máximo 2 casas decimais (ex.: 150.75).' }
+    EmptyRecipient:
+      summary: Destinatário vazio
+      value: { error: O campo "recipient" não pode ser vazio. }
+    InvalidDateFormat:
+      summary: Data fora do formato AAAA-MM-DD
+      value: { error: 'O campo "spentOn" deve ser uma data no formato AAAA-MM-DD (ex.: 2026-10-21).' }
+    NonexistentDate:
+      summary: 'Data que não existe no calendário (ex.: 2026-02-30)'
+      value: { error: O campo "spentOn" não é uma data válida. }
+    FutureDate:
+      summary: Data futura
+      value: { error: O campo "spentOn" não pode ser uma data futura. }
 
   responses:
+    TransactionNotFound:
+      description: Transação não encontrada
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              $ref: '#/components/examples/TransactionNotFound'
+
+    EnvelopeInBodyNotFound:
+      description: |
+        O envelope informado no corpo (`envelopeId`) não existe. É 422 e não 404 porque a rota existe:
+        o problema é um dado do corpo que aponta para um envelope inexistente.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Envelope com ID 42 não encontrado.
+
     EnvelopeNotFound:
       description: Envelope não encontrado
       content:

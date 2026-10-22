@@ -73,11 +73,12 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Casos de erro: saldo insuficiente, envelope inexistente, apagar envelope com transações
 - [x] Concorrência: POSTs, PUTs e DELETEs simultâneos sem deadlock e com a auditoria em 0 (etapa 9)
 
-## 11. Documentação Swagger
+## 11. Documentação Swagger ✅
 - [x] 11a. `swagger-ui-express` + `docs/openapi.yaml` (OpenAPI 3.0.3; o Swagger UI lê o YAML no navegador, sem parser no servidor)
-- [ ] Schemas `Envelope`, `Transaction`, `Error`; exemplos de request/response; todos os status codes (11b: envelopes e transferência feitos, mensagens conferidas contra a API; falta 11c: transações)
+- [x] 11b/11c. Schemas `Envelope`, `Transaction`, `Error`; exemplos de request/response; todos os status codes (as 26 mensagens de erro conferidas contra a API, nos dois sentidos)
 - [x] 11a. Rota `/api-docs` (e `/api-docs/openapi.yaml` para importar no Postman)
-- [ ] Lint sem erros: `npx @redocly/cli lint docs/openapi.yaml`
+- [x] Lint sem erros: `npx @redocly/cli lint docs/openapi.yaml` (3 avisos aceitos: listagens sem resposta 4xx)
+- [x] Importável no Postman: `http://localhost:3000/api-docs/openapi.yaml` gera a coleção (ajustar a variável `baseUrl` para `http://localhost:3000`)
 
 ## 12. Deploy no Render
 - [ ] `"start": "node server.js"` e `"engines"` no `package.json`; push para o GitHub
