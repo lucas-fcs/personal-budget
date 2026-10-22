@@ -1,4 +1,6 @@
+const path = require('node:path');
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
 const db = require('./db');
 const envelopesRouter = require('./routes/envelopes');
 const transactionsRouter = require('./routes/transactions');
@@ -33,6 +35,18 @@ app.get('/', async (req, res) => {
 
 app.use('/envelopes', envelopesRouter);
 app.use('/transactions', transactionsRouter);
+
+// Documentação OpenAPI. O arquivo cru (para importar no Postman) vem ANTES da página, que também
+// responde sob /api-docs. O próprio Swagger UI busca o YAML por esta rota e o interpreta no navegador:
+// o servidor não precisa de um parser de YAML, e editar o arquivo aparece ao recarregar a página.
+const openapiPath = path.join(__dirname, 'docs', 'openapi.yaml');
+app.get('/api-docs/openapi.yaml', (req, res) => {
+  res.type('application/yaml').sendFile(openapiPath);
+});
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, {
+  customSiteTitle: 'Personal Budget API — Documentação',
+  swaggerOptions: { url: '/api-docs/openapi.yaml' }
+}));
 
 // A ordem importa: o 404 vem depois de todas as rotas, e o error handler é sempre o último.
 app.use(notFound);

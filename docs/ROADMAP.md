@@ -74,9 +74,10 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Concorrência: POSTs, PUTs e DELETEs simultâneos sem deadlock e com a auditoria em 0 (etapa 9)
 
 ## 11. Documentação Swagger
-- [ ] `swagger-ui-express` + `docs/openapi.yaml` (OpenAPI 3)
+- [x] 11a. `swagger-ui-express` + `docs/openapi.yaml` (OpenAPI 3.0.3; o Swagger UI lê o YAML no navegador, sem parser no servidor)
 - [ ] Schemas `Envelope`, `Transaction`, `Error`; exemplos de request/response; todos os status codes
-- [ ] Rota `/api-docs`
+- [x] 11a. Rota `/api-docs` (e `/api-docs/openapi.yaml` para importar no Postman)
+- [ ] Lint sem erros: `npx @redocly/cli lint docs/openapi.yaml`
 
 ## 12. Deploy no Render
 - [ ] `"start": "node server.js"` e `"engines"` no `package.json`; push para o GitHub

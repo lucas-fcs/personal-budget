@@ -1,0 +1,117 @@
+# Especificação OpenAPI da Personal Budget API.
+# Escrita à mão: ao mudar uma rota em routes/, atualize este arquivo no mesmo commit.
+# Validar: npx @redocly/cli lint docs/openapi.yaml
+# Ver: npm run dev → http://localhost:3000/api-docs
+openapi: 3.0.3
+
+info:
+  title: Personal Budget API
+  version: 1.0.0
+  description: |
+    API REST de orçamento por envelopes, com PostgreSQL.
+
+    - Cada **envelope** tem um teto (`budget`) e um saldo disponível (`balance`).
+    - Cada **transação** é um gasto que sai de um envelope e reduz o saldo dele.
+    - Vale sempre: `budget − balance = soma das transações do envelope`.
+
+    **Valores monetários** são devolvidos como **string** com 2 casas decimais (`"500.00"`), para não
+    perder precisão com números de ponto flutuante. Na entrada, aceita-se número (`150.75`) ou string
+    (`"150.75"`), com no máximo 2 casas decimais.
+
+    **Datas** usam o formato `AAAA-MM-DD`, no fuso de Brasília.
+  license:
+    name: ISC
+    url: https://opensource.org/license/isc-license-txt
+
+# A API não tem autenticação (projeto de estudo). "security: []" declara isso explicitamente,
+# em vez de deixar a dúvida se a autenticação foi esquecida na documentação.
+security: []
+
+# URL relativa: o mesmo arquivo funciona em localhost e no Render, sem edição.
+servers:
+  - url: /
+    description: O mesmo servidor que publica esta documentação
+
+tags:
+  - name: Resumo
+    description: Saúde da API e totais do orçamento
+  - name: Envelopes
+    description: Categorias de orçamento, com teto e saldo
+  - name: Transações
+    description: Gastos registrados em um envelope
+
+paths:
+  /:
+    get:
+      tags: [Resumo]
+      summary: Resumo do orçamento
+      description: Também serve de health check, pois consulta o banco a cada chamada.
+      operationId: getSummary
+      responses:
+        '200':
+          description: API e banco funcionando
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Summary'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Money:
+      type: string
+      description: Valor monetário exato, sempre com 2 casas decimais.
+      pattern: '^\d+\.\d{2}$'
+      example: '500.00'
+
+    MoneyInput:
+      description: Valor monetário com no máximo 2 casas decimais, como número ou string.
+      oneOf:
+        - type: number
+          minimum: 0
+          example: 150.75
+        - type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          example: '150.75'
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Mensagem em português, segura para exibir ao usuário.
+      example:
+        error: Envelope com ID 42 não encontrado.
+
+    Summary:
+      type: object
+      required: [message, envelopesCount, totalBudget, totalBalance]
+      properties:
+        message:
+          type: string
+          example: API Personal Budget ativa.
+        envelopesCount:
+          type: integer
+          example: 2
+        totalBudget:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          description: Soma dos tetos de todos os envelopes.
+          example: '1100.00'
+        totalBalance:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          description: Soma dos saldos disponíveis de todos os envelopes.
+          example: '886.00'
+
+  responses:
+    InternalError:
+      description: Erro inesperado no servidor (o detalhe fica só no log)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Erro interno do servidor.
