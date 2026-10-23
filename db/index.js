@@ -2,7 +2,10 @@ const { Pool, types } = require('pg');
 
 // Falha cedo e com mensagem clara, em vez de um erro de conexão confuso na primeira requisição.
 if (!process.env.DATABASE_URL) {
-  console.error('A variável DATABASE_URL não está definida. Copie .env.example para .env e preencha a senha.');
+  console.error(
+    'A variável DATABASE_URL não está definida. Local: copie .env.example para .env e preencha a senha. ' +
+    'Render: confira se o serviço foi criado pelo render.yaml (que liga a variável ao banco).'
+  );
   process.exit(1);
 }
 

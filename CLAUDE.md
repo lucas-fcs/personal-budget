@@ -29,4 +29,5 @@ Este é um projeto de portfólio/estudo. O dono quer **entender** cada decisão,
 
 ## Ambiente
 - Windows; projeto dentro de uma pasta do OneDrive.
-- PostgreSQL local para desenvolvimento; Render Postgres em produção (variável `DATABASE_URL`, exige SSL).
+- PostgreSQL local para desenvolvimento; Render Postgres em produção, descrito em `render.yaml` (Blueprint). A API usa a URL interna (rede privada, sem TLS); conexões externas, como o `psql` local, exigem TLS (`sslmode=require`).
+- A URL do banco de produção nunca vai para arquivo: para usá-la localmente, `read -rs PROD_DATABASE_URL` no terminal.

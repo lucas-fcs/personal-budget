@@ -81,10 +81,11 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Importável no Postman: `http://localhost:3000/api-docs/openapi.yaml` gera a coleção (ajustar a variável `baseUrl` para `http://localhost:3000`)
 
 ## 12. Deploy no Render
-- [ ] `"start": "node server.js"` e `"engines"` no `package.json`; push para o GitHub
-- [ ] Criar Render Postgres (free: expira em 30 dias) e rodar o `schema.sql` nele com `psql` pela External URL
-- [ ] Web Service ligado ao repo, com `DATABASE_URL` (Internal URL) nas env vars; SSL se necessário
-- [ ] Testar a URL pública e `/api-docs`; atualizar o README
+- [x] 12a. `render.yaml` (Blueprint: API + Postgres free em `virginia`, `DATABASE_URL` ligada pelo `fromDatabase`); `engines` fixado em `24.x`; build com `npm ci`
+- [ ] 12b. PR `part-2 → main` e merge; criar o Blueprint no painel do Render a partir do repositório
+- [ ] 12c. Rodar o `schema.sql` em produção com `psql` pela URL externa (guardada só em `read -rs PROD_DATABASE_URL`); depois fechar o acesso externo com `ipAllowList: []`
+- [ ] 12d. Testar a URL pública e `/api-docs`; roteiro da etapa 10 contra a produção (com autorização)
+- [ ] 12e. Reescrever o README (Parte II, como rodar, limites do plano free)
 
 ## 13. Próximos passos (opcional)
 - [ ] Front-end simples (HTML/CSS/JS) ou React consumindo a API
