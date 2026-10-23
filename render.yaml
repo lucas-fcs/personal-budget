@@ -1,0 +1,44 @@
+# Blueprint do Render: a infraestrutura de produção descrita como código.
+# Criar/recriar tudo: painel do Render → New → Blueprint → escolher este repositório.
+# Útil sobretudo porque o Postgres do plano free expira 30 dias após a criação.
+# Referência: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: personal-budget-api
+    runtime: node
+    plan: free
+    # Não há região na América do Sul; Virginia (leste dos EUA) é a mais próxima do Brasil.
+    # API e banco PRECISAM estar na mesma região para usar a rede privada (URL interna).
+    region: virginia
+    # A main é o que está em produção: cada push nela dispara um novo deploy.
+    branch: main
+    autoDeployTrigger: commit
+    # npm ci instala exatamente o package-lock.json (falha se ele estiver desatualizado).
+    buildCommand: npm ci
+    # Sem --env-file: em produção as variáveis vêm daqui, não de um arquivo .env.
+    startCommand: npm start
+    # O Render só envia tráfego se esta rota responder 200. O GET / consulta o banco,
+    # então um banco fora do ar aparece como serviço não saudável (o que é verdade).
+    healthCheckPath: /
+    envVars:
+      # A URL do banco é ligada automaticamente: nenhum segredo é copiado à mão.
+      # connectionString é a URL INTERNA (rede privada do Render), usada sem TLS:
+      # os certificados internos são autoassinados e o tráfego não sai da rede privada.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: personal-budget-db
+          property: connectionString
+
+databases:
+  - name: personal-budget-db
+    plan: free
+    region: virginia
+    # Mesma major do Postgres local, para dev e produção se comportarem igual.
+    postgresMajorVersion: "18"
+    databaseName: personal_budget
+    # Usuário dono do banco, sem superusuário: o mesmo modelo do budget_app local.
+    user: budget_app
+    # ipAllowList omitido = conexões externas permitidas (sempre com senha e TLS).
+    # Necessário para rodar o db/schema.sql com o psql local; depois disso, a etapa 12c
+    # fecha o acesso externo com "ipAllowList: []".
