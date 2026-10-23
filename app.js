@@ -10,6 +10,10 @@ const { notFound, errorHandler } = require('./middleware/errors');
 // Quem abre a porta é o server.js; assim testes podem importar o app sem subir um servidor.
 const app = express();
 
+// Não anunciar "x-powered-by: Express" em toda resposta: é informação de graça para quem
+// procura servidores com versões vulneráveis, e nenhum cliente precisa dela.
+app.disable('x-powered-by');
+
 // Middleware para parsing de JSON
 app.use(express.json());
 

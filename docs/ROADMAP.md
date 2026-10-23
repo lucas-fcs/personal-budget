@@ -80,14 +80,14 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 - [x] Lint sem erros: `npx @redocly/cli lint docs/openapi.yaml` (3 avisos aceitos: listagens sem resposta 4xx)
 - [x] Importável no Postman: `http://localhost:3000/api-docs/openapi.yaml` gera a coleção (ajustar a variável `baseUrl` para `http://localhost:3000`)
 
-## 12. Deploy no Render
+## 12. Deploy no Render ✅
 - [x] 12a. `render.yaml` (Blueprint: API + Postgres free em `virginia`, `DATABASE_URL` ligada pelo `fromDatabase`); `engines` fixado em `24.x`; build com `npm ci`
 - [x] 12b. PR `part-2 → main` (lucas-fcs/personal-budget#1) e merge; Blueprint criado no Render (URL: https://personal-budget-api-rrm3.onrender.com)
 - [x] 12c. `schema.sql` aplicado em produção pela URL externa (lida de `/dev/clipboard`, nunca gravada em arquivo); `budget_app_v2` recebeu `GRANT ALL` nas tabelas
 - [x] 12c. **Senha exposta do `budget_app`:** rotacionada para `budget_app_v2` (a API já usa a nova) e senha do `budget_app` trocada por uma aleatória. Como a porta externa do Render continuou aceitando a credencial antiga mesmo assim, o acesso externo foi fechado com `ipAllowList: []`: agora nenhuma credencial entra de fora do Render (verificado). Ao reabrir para manutenção, liberar só o próprio IP (`/32`) e fechar de novo
 - [ ] 12c. As tabelas pertencem ao `budget_app`: mudanças futuras de estrutura (`ALTER TABLE`) exigirão transferir a posse para o `budget_app_v2`
-- [ ] 12d. Testar a URL pública e `/api-docs`; roteiro da etapa 10 contra a produção (com autorização)
-- [ ] 12e. Reescrever o README (Parte II, como rodar, limites do plano free)
+- [x] 12d. URL pública e `/api-docs` testados; roteiro da etapa 10 rodado contra a produção (invariante ok em todos os passos) e dados de teste apagados pela própria API
+- [x] 12e. README reescrito (Parte II, decisões técnicas, como rodar, deploy e limites do plano free); `x-powered-by` desativado
 
 ## 13. Próximos passos (opcional)
 - [ ] Front-end simples (HTML/CSS/JS) ou React consumindo a API
