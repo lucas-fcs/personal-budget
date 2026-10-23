@@ -41,6 +41,13 @@ databases:
     # budget_app_v2: a credencial original foi rotacionada (Credential Rotation no painel)
     # antes de qualquer tabela ser criada, então as tabelas pertencem a este usuário.
     user: budget_app_v2
-    # ipAllowList omitido = conexões externas permitidas (sempre com senha e TLS).
-    # Necessário para rodar o db/schema.sql com o psql local; depois disso, a etapa 12c
-    # fecha o acesso externo com "ipAllowList: []".
+    # Lista vazia = NENHUMA conexão externa (pela internet), com qualquer credencial.
+    # A API não é afetada: ela usa a rede interna do Render.
+    # Motivo extra: uma credencial exposta continuou aceita pela porta externa mesmo depois de
+    # apagada no painel e de ter a senha trocada no Postgres.
+    # Para rodar SQL em produção de novo (ex.: um ALTER TABLE), troque temporariamente por
+    #   ipAllowList:
+    #     - source: <seu IP>/32
+    #       description: manutencao
+    # e volte para [] ao terminar.
+    ipAllowList: []
