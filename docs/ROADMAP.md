@@ -82,8 +82,10 @@ transactions (id INT IDENTITY PK, envelope_id INT NOT NULL FK -> envelopes(id) O
 
 ## 12. Deploy no Render
 - [x] 12a. `render.yaml` (Blueprint: API + Postgres free em `virginia`, `DATABASE_URL` ligada pelo `fromDatabase`); `engines` fixado em `24.x`; build com `npm ci`
-- [ ] 12b. PR `part-2 → main` e merge; criar o Blueprint no painel do Render a partir do repositório
-- [ ] 12c. Rodar o `schema.sql` em produção com `psql` pela URL externa (guardada só em `read -rs PROD_DATABASE_URL`); depois fechar o acesso externo com `ipAllowList: []`
+- [x] 12b. PR `part-2 → main` (lucas-fcs/personal-budget#1) e merge; Blueprint criado no Render (URL: https://personal-budget-api-rrm3.onrender.com)
+- [x] 12c. `schema.sql` aplicado em produção pela URL externa (lida de `/dev/clipboard`, nunca gravada em arquivo); `budget_app_v2` recebeu `GRANT ALL` nas tabelas
+- [ ] 12c. **Pendência de segurança:** a senha do `budget_app` foi exposta e rotacionada (credencial nova: `budget_app_v2`), mas o `budget_app` apagado no painel ainda aceita login. Desativar com `ALTER ROLE budget_app NOLOGIN` (como `budget_app_v2`) ou trocar a senha dele por uma aleatória; depois fechar o acesso externo com `ipAllowList: []`
+- [ ] 12c. As tabelas pertencem ao `budget_app`: mudanças futuras de estrutura (`ALTER TABLE`) exigirão transferir a posse para o `budget_app_v2`
 - [ ] 12d. Testar a URL pública e `/api-docs`; roteiro da etapa 10 contra a produção (com autorização)
 - [ ] 12e. Reescrever o README (Parte II, como rodar, limites do plano free)
 

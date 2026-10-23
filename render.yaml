@@ -38,7 +38,9 @@ databases:
     postgresMajorVersion: "18"
     databaseName: personal_budget
     # Usuário dono do banco, sem superusuário: o mesmo modelo do budget_app local.
-    user: budget_app
+    # budget_app_v2: a credencial original foi rotacionada (Credential Rotation no painel)
+    # antes de qualquer tabela ser criada, então as tabelas pertencem a este usuário.
+    user: budget_app_v2
     # ipAllowList omitido = conexões externas permitidas (sempre com senha e TLS).
     # Necessário para rodar o db/schema.sql com o psql local; depois disso, a etapa 12c
     # fecha o acesso externo com "ipAllowList: []".
